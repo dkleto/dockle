@@ -1,8 +1,5 @@
 #! /bin/bash
 
-## Get site specific configuration variables
-. ./config.sh
-
 ## Remove previous containers.
 sudo docker rm $webcont
 sudo docker rm $dbcont
@@ -48,7 +45,7 @@ web_ip_esc=`echo $web_ip | sed -e 's/\./\\\./g'`
 ## If the URL is already present, change the IP. If not, add an entry for it.
 if grep --quiet $site_url /etc/hosts;  then
     regex="-i 's/^.*$site_url_esc.*$/$web_ip_esc $site_url_esc/' /etc/hosts"
-    eval sed "$regex"
+    eval sudo sed "$regex"
 else
     echo "## $site_url web container" >> /etc/hosts
     echo "$web_ip $site_url" >> /etc/hosts
