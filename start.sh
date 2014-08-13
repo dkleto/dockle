@@ -1,7 +1,7 @@
 #! /bin/bash
 
 ## Get site specific configuration variables
-. ../config.sh
+. ./config.sh
 
 ## Remove previous containers.
 sudo docker rm $webcont
