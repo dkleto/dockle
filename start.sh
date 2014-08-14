@@ -1,4 +1,18 @@
 #! /bin/bash
+## Check that the containers aren't already running
+running=0
+for CONTAINER in "$webcont" "$dbcont"
+    do
+        if `sudo docker ps | grep --quiet $CONTAINER`
+            then
+                running=1
+                echo "$CONTAINER is already running."
+        fi
+    done
+if [ $running = 1 ]
+    then
+        exit
+fi
 
 ## Remove previous containers.
 sudo docker rm $webcont
@@ -36,7 +50,7 @@ fi
 sudo docker run -d --name $webcont --link $dbcont:$dbcont  -v $hostcodedir:/var/www/$sitedir -v $rootdir/logs:/var/log/sitelogs/$sitedir $dockreg/$webimage
 
 ## Cook hosts file to point to the web container:
-web_ip=`docker inspect --format '{{ .NetworkSettings.IPAddress }}' $webcont`
+web_ip=`sudo docker inspect --format '{{ .NetworkSettings.IPAddress }}' $webcont`
 
 ## We need to escape periods.
 site_url_esc=`echo $site_url | sed -e 's/\./\\\./g'`
@@ -47,6 +61,6 @@ if grep --quiet $site_url /etc/hosts;  then
     regex="-i 's/^.*$site_url_esc.*$/$web_ip_esc $site_url_esc/' /etc/hosts"
     eval sudo sed "$regex"
 else
-    echo "## $site_url web container" >> /etc/hosts
-    echo "$web_ip $site_url" >> /etc/hosts
+    echo "## $site_url web container" | sudo tee -a /etc/hosts
+    echo "$web_ip $site_url" | sudo tee -a /etc/hosts
 fi
