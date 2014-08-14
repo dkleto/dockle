@@ -22,13 +22,18 @@ sudo docker rm $dbcont
 rootdir=`pwd`
 hostcodedir=$rootdir/www
 
-## The code directory should exist already.
+## The code and log directories exist already.
 if [ ! -d $hostcodedir ]
     then
         echo -e "\nError: The directory $hostcodedir does not exist. You should
         either create this directory and add the $site_url codebase, or
         symlink to this codebase.\n"
         exit 1
+fi
+if [ ! -d $rootdir/logs ]
+    then
+        echo "Creating logs directory..."
+        mkdir $rootdir/logs
 fi
 
 ## Run the DB container.
