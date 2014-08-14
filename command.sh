@@ -4,7 +4,6 @@
 ## This script is intended to be run from the parent dir.
 for ARG in $*
     do
-    echo $ARG
         case $ARG in
             start)
             . ./scripts/start.sh
@@ -21,6 +20,10 @@ for ARG in $*
             ;;
             psql)
             . ./scripts/psql.sh
+            exit
+            ;;
+            pg_dump)
+            . ./scripts/psql.sh -d
             exit
             ;;
             *)

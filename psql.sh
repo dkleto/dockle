@@ -12,8 +12,17 @@ db_ip=`sudo docker inspect --format '{{ .NetworkSettings.IPAddress }}' $dbhost`
 
 if [ -z $db_ip ]
     then
-    echo "The database hose $dbhost is not running."
+    echo "The database host $dbhost is not running."
     exit
 fi
 
+## If the -d option is passed, output an sql dump.
+while getopts ":d" opt; do
+    if [ $opt = "d" ]
+        then
+        pg_dump -U $dbuser $dbname -h $db_ip
+        exit
+    fi
+done
+## If no arg is passed, start a psql shell.
 psql -U $dbuser $dbname -h $db_ip
