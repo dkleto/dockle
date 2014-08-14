@@ -19,7 +19,7 @@ sudo docker rm $webcont
 sudo docker rm $dbcont
 
 ## Location of code on host machine.
-rootdir=`pwd`/$sitedir
+rootdir=`pwd`
 hostcodedir=$rootdir/www
 
 ## The code directory should exist already.
