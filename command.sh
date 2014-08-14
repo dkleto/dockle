@@ -19,6 +19,10 @@ for ARG in $*
             . ./scripts/start.sh
             exit
             ;;
+            psql)
+            . ./scripts/psql.sh
+            exit
+            ;;
             *)
             continue
         esac
