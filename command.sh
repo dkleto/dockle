@@ -26,6 +26,10 @@ for ARG in $*
             . ./scripts/psql.sh -d
             exit
             ;;
+            save)
+            . ./scripts/save.sh
+            exit
+            ;;
             *)
             continue
         esac
