@@ -1,7 +1,7 @@
 #! /bin/bash
 ## Check that the containers aren't already running
 running=0
-for CONTAINER in "$webcont" "$dbcont"
+for CONTAINER in "$webcont" "$dbcont" "$wscont"
     do
         if `sudo docker ps | grep --quiet $CONTAINER`
             then
@@ -15,8 +15,10 @@ if [ $running = 1 ]
 fi
 
 ## Remove previous containers.
-sudo docker rm $webcont
-sudo docker rm $dbcont
+for CONTAINER in "$webcont" "$dbcont" "$wscont"
+    do
+        sudo docker rm $CONTAINER
+    done
 
 ## Location of code on host machine.
 rootdir=`pwd`
@@ -39,6 +41,9 @@ fi
 ## Run the DB container.
 sudo docker run -d --name $dbcont $dockreg/$dbimage
 
+## Run the web services container
+sudo docker run -d --name $wscont -v $wscodedir:/var/www/$wscode -v $rootdir/logs:/var/log/sitelogs/$wscode $dockreg/$wsimage
+
 ## Copy template config.php to the codebase. First backup existing config.php.
 if [ -f $hostcodedir/config.php ]
     then
@@ -52,20 +57,29 @@ if [ -f $hostcodedir/config.php ]
 fi
 
 ## Run the web container.
-sudo docker run -d --name $webcont --link $dbcont:$dbcont  -v $hostcodedir:/var/www/$sitedir -v $rootdir/logs:/var/log/sitelogs/$sitedir $dockreg/$webimage
+sudo docker run -d --name $webcont --link $dbcont:$dbcont --link $wscont:$wscont -v $hostcodedir:/var/www/$sitedir -v $rootdir/logs:/var/log/sitelogs/$sitedir $dockreg/$webimage
 
-## Cook hosts file to point to the web container:
-web_ip=`sudo docker inspect --format '{{ .NetworkSettings.IPAddress }}' $webcont`
-
+## Cook hosts file to point to the web and the web services container:
+for CONTAINER in "$webcont" "$wscont"
+    do
+    web_ip=`sudo docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CONTAINER`
+    ## TODO: Replace the below hack
+    if [ $CONTAINER == $wscont ]
+       then
+           url=$ws_url
+       else
+           url=$site_url
+    fi
 ## We need to escape periods.
-site_url_esc=`echo $site_url | sed -e 's/\./\\\./g'`
-web_ip_esc=`echo $web_ip | sed -e 's/\./\\\./g'`
+    site_url_esc=`echo $url | sed -e 's/\./\\\./g'`
+    web_ip_esc=`echo $web_ip | sed -e 's/\./\\\./g'`
 
 ## If the URL is already present, change the IP. If not, add an entry for it.
-if grep --quiet $site_url /etc/hosts;  then
-    regex="-i 's/^.*$site_url_esc.*$/$web_ip_esc $site_url_esc/' /etc/hosts"
-    eval sudo sed "$regex"
-else
-    echo "## $site_url web container" | sudo tee -a /etc/hosts
-    echo "$web_ip $site_url" | sudo tee -a /etc/hosts
-fi
+    if grep --quiet $url /etc/hosts;  then
+        regex="-i 's/^.*$site_url_esc.*$/$web_ip_esc $site_url_esc/' /etc/hosts"
+        eval sudo sed "$regex"
+    else
+        echo "## $url web container" | sudo tee -a /etc/hosts
+        echo "$web_ip $url" | sudo tee -a /etc/hosts
+    fi
+    done

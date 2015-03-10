@@ -3,8 +3,9 @@
 ## Search running docker processes for the web and db containers.
 webps=`sudo docker ps | grep $webcont`
 dbps=`sudo docker ps | grep $dbcont`
+wsps=`sudo docker ps | grep $wscont`
 
-for CONTAINER in "$webps" "$dbps"
+for CONTAINER in "$webps" "$dbps" "$wsps"
     do
         ## If the container is running...
         if [ ! -z "$CONTAINER" ]
