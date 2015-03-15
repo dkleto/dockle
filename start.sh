@@ -1,8 +1,9 @@
 #! /bin/bash
 ## Check that the containers aren't already running
 running=0
-for CONTAINER in "$webcont" "$dbcont" "$wscont"
+for IMAGE in "${!contnames[@]}"
     do
+        CONTAINER=${contnames[$IMAGE]}
         if `sudo docker ps | grep --quiet $CONTAINER`
             then
                 running=1
@@ -15,71 +16,74 @@ if [ $running = 1 ]
 fi
 
 ## Remove previous containers.
-for CONTAINER in "$webcont" "$dbcont" "$wscont"
+for IMAGE in "${!contnames[@]}"
     do
-        sudo docker rm $CONTAINER
+        CONTAINER=${contnames[$IMAGE]}
+        if sudo docker ps -a | grep --quiet "$CONTAINER"
+            then
+                sudo docker rm $CONTAINER
+        fi
     done
 
-## Location of code on host machine.
-rootdir=`pwd`
-hostcodedir=$rootdir/www
-
-## The code and log directories exist already.
-if [ ! -d $hostcodedir ]
-    then
-        echo -e "\nError: The directory $hostcodedir does not exist. You should
-        either create this directory and add the $site_url codebase, or
-        symlink to this codebase.\n"
-        exit 1
-fi
-if [ ! -d $rootdir/logs ]
-    then
-        echo "Creating logs directory..."
-        mkdir $rootdir/logs
-fi
-
-## Run the DB container.
-sudo docker run -d --name $dbcont $dockreg/$dbimage
-
-## Run the web services container
-sudo docker run -d --name $wscont -v $wscodedir:/var/www/$wscode -v $rootdir/logs:/var/log/sitelogs/$wscode $dockreg/$wsimage
-
-## Copy template config.php to the codebase. First backup existing config.php.
-if [ -f $hostcodedir/config.php ]
-    then
-        if ! diff -q $rootdir/config-template.php $rootdir/www/config.php > /dev/null
-            then
-                mv $hostcodedir/config.php $rootdir/config-backup.php
-                cp $rootdir/config-template.php $hostcodedir/config.php
-        fi
-    else
-        cp $rootdir/config-template.php $hostcodedir/config.php
-fi
-
-## Run the web container.
-sudo docker run -d --name $webcont --link $dbcont:$dbcont --link $wscont:$wscont -v $hostcodedir:/var/www/$sitedir -v $rootdir/logs:/var/log/sitelogs/$sitedir $dockreg/$webimage
-
-## Cook hosts file to point to the web and the web services container:
-for CONTAINER in "$webcont" "$wscont"
+missing=0
+for DIR in "${!dirs[@]}"
     do
-    web_ip=`sudo docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CONTAINER`
-    ## TODO: Replace the below hack
-    if [ $CONTAINER == $wscont ]
-       then
-           url=$ws_url
-       else
-           url=$site_url
-    fi
-## We need to escape periods.
-    site_url_esc=`echo $url | sed -e 's/\./\\\./g'`
+        dirname="${dirs[$DIR]}"
+        if [ ! -d $dirname ]
+            then
+                missing=1
+                echo -e "\nError: The directory $dirname is configured to be
+                mounted in one of the containers. Make sure that this directory
+                exists and is readable."
+                exit 1
+        fi
+    done
+if [ $missing = 1 ]
+    then
+        exit
+fi
+
+## Start the containers
+for IMAGE in "${!contorder[@]}"
+    do
+        image=${contorder[$IMAGE]}
+        sudo docker run -d --name ${contnames[$image]} ${contargs[$image]}
+    done
+
+## Backup configuration files if necessary then copy them in
+for CONF in "${!configs[@]}"
+    do
+        target=${configs[$CONF]}
+        if [ -f $target ]
+            then
+                if ! diff -q $CONF $target > /dev/null
+                    then
+                        ## Strip the path from the file
+                        bufile=`echo $target | sed -e 's/^.*\///'`
+                        ## Append "-backup", but keep file extension
+                        butarget=`echo $bufile | sed -e 's/\(\.[a-zA-Z]*\)\?$/-backup\1/'`
+                        mv $target $butarget
+                        cp $CONF $target
+                fi
+            else
+                cp $CONF $target
+        fi
+    done
+
+## Cook hosts files according to config
+for COOK in "${!hostcookery[@]}"
+    do
+    web_ip=`sudo docker inspect --format '{{ .NetworkSettings.IPAddress }}' ${hostcookery[$COOK]}`
+    ## We need to escape periods.
+    site_url_esc=`echo $COOK | sed -e 's/\./\\\./g'`
     web_ip_esc=`echo $web_ip | sed -e 's/\./\\\./g'`
 
-## If the URL is already present, change the IP. If not, add an entry for it.
-    if grep --quiet $url /etc/hosts;  then
+    ## If the URL is already present, change the IP. If not, add an entry for it.
+    if grep --quiet $COOK /etc/hosts;  then
         regex="-i 's/^.*$site_url_esc.*$/$web_ip_esc $site_url_esc/' /etc/hosts"
         eval sudo sed "$regex"
     else
-        echo "## $url web container" | sudo tee -a /etc/hosts
-        echo "$web_ip $url" | sudo tee -a /etc/hosts
+        echo "## ${hostcookery[$COOK]} container" | sudo tee -a /etc/hosts
+        echo "$web_ip $COOK" | sudo tee -a /etc/hosts
     fi
     done
