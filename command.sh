@@ -1,5 +1,8 @@
 #! /bin/bash
 
+## First set up default variables
+. ./scripts/defaults.sh "$@"
+
 ## Run the approprate script based on arguments.
 ## This script is intended to be run from the parent dir.
 for ARG in $*
