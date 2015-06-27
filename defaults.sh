@@ -14,12 +14,25 @@ fi
 ## Sync time across all containers with the host system
 commontime=" -v /etc/localtime:/etc/localtime:ro "
 
+## Check if the site data and db data containers exist.
+## Having these checks occur in the defaults is not ideal, but the current
+## design leaves little alternative...
+for DATACONT in dbdata webdata
+    do
+        if sudo docker ps -a  | grep -q "${!DATACONT}"
+            then
+                eval $DATACONT="'--volumes-from ${!DATACONT}'"
+            else
+                eval $DATACONT=""
+        fi
+    done
+
 ## Map images to docker run arguments
 if ! declare -p $contargs | grep -iq "Declare -A contargs="; then
     declare -A contargs
     contargs=(
-        [$dbimage]="$commontime $dockreg/$dbimage"
-        [$webimage]="$commontime --link $dbcont:$dbcont -v `pwd`/www:/var/www/$sitedir -v `pwd`/logs:/var/log/sitelogs/$sitedir $dockreg/$webimage"
+        [$dbimage]="$commontime $dbdata $dockreg/$dbimage"
+        [$webimage]="$commontime --link $dbcont:$dbcont $webdata -v `pwd`/www:/var/www/$sitedir -v `pwd`/logs:/var/log/sitelogs/$sitedir $dockreg/$webimage"
     );
 fi
 
