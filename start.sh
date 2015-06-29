@@ -43,11 +43,23 @@ if [ $missing = 1 ]
         exit
 fi
 
+## Check if data containers exist.
+for IMAGE in "${!dataconts[@]}"
+    do
+        DATACONT=${dataconts[$IMAGE]}
+        if sudo docker ps -a  | grep -q "$DATACONT"
+            then
+                dataconts[$IMAGE]="--volumes-from $DATACONT"
+            else
+                dataconts[$IMAGE]=""
+        fi
+    done
+
 ## Start the containers
 for IMAGE in "${!contorder[@]}"
     do
         image=${contorder[$IMAGE]}
-        sudo docker run -d --name ${contnames[$image]} ${contargs[$image]}
+        sudo docker run -d --name ${contnames[$image]} ${contargs[$image]} ${dataconts[$image]} $dockreg/$image
     done
 
 ## Backup configuration files if necessary then copy them in
