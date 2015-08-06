@@ -59,7 +59,7 @@ for IMAGE in "${!dataconts[@]}"
 for IMAGE in "${!contorder[@]}"
     do
         image=${contorder[$IMAGE]}
-        sudo docker run -d --name ${contnames[$image]} ${contargs[$image]} ${dataconts[$image]} $dockreg/$image
+        sudo docker run --name ${contnames[$image]} ${contargs[$image]} ${dataconts[$image]} $dockreg/$image
     done
 
 ## Backup configuration files if necessary then copy them in
