@@ -36,7 +36,6 @@ case $1 in
     . ./scripts/builddb.sh
     ;;
     *)
-    continue
 esac
 
 ## Start environment if no arguments passed.
