@@ -52,7 +52,7 @@ if [ -f $hostcodedir/config.php ]
 fi
 
 ## Run the web container.
-sudo docker run -d --name $webcont --link $dbcont:$dbcont  -v $hostcodedir:/var/www/$sitedir -v $rootdir/logs:/var/log/sitelogs/$sitedir $dockreg/$webimage
+sudo docker run -d --name $webcont --link $dbcont:$dbcont  -v $hostcodedir:/var/www/$sitedir -v $rootdir/logs:/var/log/sitelogs/$sitedir -v /etc/localtime:/etc/localtime $dockreg/$webimage
 
 ## Cook hosts file to point to the web container:
 web_ip=`sudo docker inspect --format '{{ .NetworkSettings.IPAddress }}' $webcont`
